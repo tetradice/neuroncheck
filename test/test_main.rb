@@ -335,6 +335,24 @@ end
 
 # 各種特殊マッチャのテスト
 class AdvancedMatcherTest < Test::Unit::TestCase
+	test "respondable matcher" do
+		cls = Class.new
+		cls.class_eval do
+			extend NeuronCheck
+
+			ndecl {
+				args respondable(:each)
+			}
+			def test_method(arg1)
+			end
+		end
+
+		inst = cls.new
+
+		assert_nothing_raised(){ inst.test_method([]) }
+		assert_raise_message(%r|must be any value except nil|){  inst.test_method(1) }
+	end
+
 	test "except matcher" do
 		cls = Class.new
 		cls.class_eval do

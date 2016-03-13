@@ -9,7 +9,7 @@ NeuronCheckSystem::Plugin.add_keyword(:respondable) do
   end
 
   def match?(value)
-    true # 常にtrue
+    @method_names.all?{|x| value.respond_to?(x)}
   end
 
   def expected_caption
@@ -31,7 +31,6 @@ NeuronCheckSystem::Plugin.add_keyword(:respondable) do
 end
 
 # respond_to, res: respondableのエイリアス
-NeuronCheckSystem::Plugin.alias_keyword(:respond_to, :respondable)
 NeuronCheckSystem::Plugin.alias_keyword(:res, :respondable)
 
 # any: すべての値を受け付ける
