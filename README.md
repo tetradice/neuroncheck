@@ -1,6 +1,10 @@
 # NeuronCheck
 Library for checking parameters, return value, preconditions and postconditions with declarative syntax.
 
+## Requirement
+
+Ruby 2.0.0 or later
+
 ## Example
 
 ~~~ ruby
@@ -16,7 +20,7 @@ class Converter
     args String, respondable(:each), [Numeric, nil]
 
     # Return value declaration (this method returns self)
-    returns self
+    returns :self
 
     # Precondition check
     precond do

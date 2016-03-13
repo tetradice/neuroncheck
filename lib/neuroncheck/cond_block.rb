@@ -11,22 +11,22 @@ module NeuronCheckSystem
 				if @allow_instance_method then
 					@method_self.send(name, *args, &block)
 				else
-					raise NeuronCheckSystem::DeclarationError, "instance method `#{name}' cannot be called in #{@block_name}, it is forbidden", caller(1)
+					raise NeuronCheckSystem::DeclarationError, "instance method `#{name}' cannot be called in #{@block_name}, it is forbidden", (NeuronCheck.debug? ? caller : caller(1))
 				end
 			else
 				super
 			end
 		end
 
-		def assert(&assert_block)
-			unless assert_block then
-				raise NeuronCheckSystem::DeclarationError, "no block given for `assert' in #{@block_name}", caller(1)
+		def assert(*dummy)
+			unless block_given? then
+				raise NeuronCheckSystem::DeclarationError, "no block given for `assert' in #{@block_name}", (NeuronCheck.debug? ? caller : caller(1))
 			end
 
 			passed = yield
 
 			unless passed
-				locs = Utils.backtrace_locations_to_captions(caller(1))
+				locs = Utils.backtrace_locations_to_captions(caller(1, 1))
 
 				msg = <<MSG
 #{@block_name} assertion failed

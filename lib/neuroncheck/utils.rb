@@ -34,7 +34,7 @@ module NeuronCheckSystem
 	        length_with_room_for_omission
 	      end
 
-	    "#{self[0, stop]}#{omission}"
+	    "#{str[0, stop]}#{omission}"
 	  end
 
 		# 1つ以上の文字列をorで結んだ英語文字列にする

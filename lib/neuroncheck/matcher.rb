@@ -6,6 +6,11 @@ module NeuronCheckSystem
 	# 期待する値に対応する、適切なマッチャを取得
 	def self.get_appropriate_matcher(expected, declared_caller_locations)
 		case expected
+		when DeclarationContext # 誤って「self」と記載した場合
+			raise DeclarationError, "`self` cannot be used in declaration - use `:self` instead"
+		when :self # self
+			SelfMatcher.new(declared_caller_locations) # 値がselfであるかどうかチェック
+
 		when String, Symbol, Integer
 			ValueEqualMatcher.new(expected, declared_caller_locations) # 値が等しいかどうかをチェック
 		when true, false, nil
@@ -16,12 +21,11 @@ module NeuronCheckSystem
 			RangeMatcher.new(expected, declared_caller_locations) # 範囲チェック
 		when Regexp
 			RegexpMatcher.new(expected, declared_caller_locations) # 正規表現チェック
+		# when Encoding
+		# 	EncodingMatcher.new(expected, declared_caller_locations) # エンコーディングチェック
 
 		when Array
 			OrMatcher.new(expected, declared_caller_locations) # ORチェック
-
-		when DeclarationContext # selfを指定した場合
-			SelfMatcher.new(declared_caller_locations) # 値がselfであるかどうかチェック
 
 		when Plugin::Keyword # プラグインによって登録されたキーワードの場合
 			KeywordPluginMatcher.new(expected, declared_caller_locations)
@@ -34,7 +38,7 @@ module NeuronCheckSystem
 
 	class MatcherBase
 		attr_accessor :declared_caller_locations
-		
+
 		def initialize(expected, declared_caller_locations)
 			@expected = expected
 			@declared_caller_locations = declared_caller_locations
@@ -146,6 +150,21 @@ MSG
 		end
 	end
 
+	# # 指定したエンコーディングを持つ文字列であることを判定する
+	# class EncodingMatcher < MatcherBase
+	# 	def match?(value, self_object)
+	# 		(value.kind_of?(String) and Encoding.compatible?(value, @expected))
+	# 	end
+	#
+	# 	def expected_caption
+	# 		"String that is compatible #{@expected.name} encoding"
+	# 	end
+	#
+	# 	def expected_short_caption
+	# 		"String compatible to #{@expected.name}"
+	# 	end
+	#
+	# end
 
 	# OR条件。渡されたマッチャ複数のうち、どれか1つでも条件を満たせばOK
 	class OrMatcher < MatcherBase

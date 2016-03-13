@@ -3,7 +3,7 @@ require 'neuroncheck/builtin_keyword'
 # NeuronCheckSyntaxはruby 2.0以前では使用しない (Refinementが実験的機能として定義されているため)
 unless RUBY_VERSION <= '2.0.9' then
 	NeuronCheckSystem::RUBY_TOPLEVEL = self
-	
+
 	module NeuronCheckSyntax
 		refine Module do
 			# NeuronCheckの宣言用キーワードを、コード内の全箇所で使用可能にする
@@ -18,7 +18,7 @@ unless RUBY_VERSION <= '2.0.9' then
 				end
 
 				# メイン処理実行
-				__neuroncheck_ndecl_main(expecteds, block, caller(1))
+				__neuroncheck_ndecl_main(expecteds, block, caller(1, 1))
 			end
 
 			alias ndeclare ndecl

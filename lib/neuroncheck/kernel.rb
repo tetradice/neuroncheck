@@ -98,7 +98,7 @@ module NeuronCheckSystem
 								if target_attr_matcher then
 									unless target_attr_matcher.match?(val, self) then
 										context_caption = "value of attribute `#{self.class.name}##{attr_name}'"
-										raise NeuronCheckError, target_attr_matcher.get_error_message(declaration, context_caption, val), caller(1)
+										raise NeuronCheckError, target_attr_matcher.get_error_message(declaration, context_caption, val), (NeuronCheck.debug? ? caller : caller(1))
 									end
 								end
 							end
@@ -111,7 +111,7 @@ module NeuronCheckSystem
 								if target_attr_matcher then
 									unless target_attr_matcher.match?(val, self) then
 										context_caption = "value of attribute `#{self.class.name}##{attr_name}'"
-										raise NeuronCheckError, target_attr_matcher.get_error_message(declaration, context_caption, val, phrase_after_but: 'set'), caller(1)
+										raise NeuronCheckError, target_attr_matcher.get_error_message(declaration, context_caption, val, phrase_after_but: 'set'), (NeuronCheck.debug? ? caller : caller(1))
 									end
 								end
 
@@ -221,9 +221,24 @@ module NeuronCheckSystem
 		# ここからの処理はイベント種別で分岐
 		case tp.event
 		when :call # タイプが「メソッドの呼び出し」の場合の処理
-			self.trace_method_call(tp.self, decl, met, tp.binding)
+			self.trace_method_call(tp.self, decl, met, 	tp.binding)
 		when :return # タイプが「メソッドの終了」の場合の処理
-			self.trace_method_return(tp.self, decl, met, tp.binding, tp.return_value)
+
+			# 「次の1回はスキップする」フラグがONであればスキップ
+			if @skip_next_return then
+				@skip_next_return = false
+				next
+			else
+
+				ex = self.trace_method_return(tp.self, decl, met, tp.binding, tp.return_value)
+				if ex then
+					# raiseで例外を脱出した場合、なぜかもう1回returnイベントが呼ばれるため、次の1回はスキップするように設定
+					@skip_next_return = true
+
+					# 例外を発生させる
+					raise ex
+				end
+			end
 		end
 	end
 	TRACE_POINT.enable
@@ -324,58 +339,65 @@ module NeuronCheckSystem
 
 		# エラーメッセージがあればNeuronCheckError発生
 		if error_msg then
-			raise NeuronCheckError, error_msg, caller(3)
+			raise NeuronCheckError, error_msg, (NeuronCheck.debug? ? caller : caller(3))
 		end
 	end
 
 	# メソッド終了時のチェック処理
 	def self.trace_method_return(method_self, declaration, met, method_binding, return_value)
+		# 処理中に例外が発生した場合、TracePointがreturnとして検知してしまうため
+		# それを防ぐために例外を自前でキャッチ
+		begin
+			# 大域脱出できるようにcatchを使用 (バックトレースを正しく取得するための処置)
+			error_msg = catch(:neuron_check_error_tag) do
 
-		# 大域脱出できるようにcatchを使用 (バックトレースを正しく取得するための処置)
-		error_msg = catch(:neuron_check_error_tag) do
-			# 最後に引数チェックエラーが発生しており、selfとメソッド名が同じものであれば、return値のチェックをスキップ
-			# (NeuronCheckError例外を発生させたときにもreturnイベントは発生してしまうため、その対策として)
-			if @last_argument_error_info and @last_argument_error_info[0].equal?(method_self) and @last_argument_error_info[1] == met.name then
-				@last_argument_error_info = nil
-				return
-			end
-
-			param_values = {}
-
-			# 対象メソッドの引数1つごとに処理
-			met.parameters.each_with_index do |param_info, def_param_index|
-				_, param_name = param_info
-
-				# 実際に渡された引数の値を取得 (デフォルト値の処理も考慮する)
-				param_value = get_local_variable_from_binding(method_binding, param_name)
-				param_values[param_name] = param_value
-			end
-
-			# 戻り値チェック
-			if (matcher = declaration.return_matcher) then
-				# チェック処理
-				unless matcher.match?(return_value, method_self) then
-					# エラー
-					throw :neuron_check_error_tag, matcher.get_error_message(declaration, "return value of `#{declaration.signature_caption_name_only}'", return_value)
+				# 最後に引数チェックエラーが発生しており、selfとメソッド名が同じものであれば、return値のチェックをスキップ
+				# (NeuronCheckError例外を発生させたときにもreturnイベントは発生してしまうため、その対策として)
+				if @last_argument_error_info and @last_argument_error_info[0].equal?(method_self) and @last_argument_error_info[1] == met.name then
+					@last_argument_error_info = nil
+					return
 				end
+
+				param_values = {}
+
+				# 対象メソッドの引数1つごとに処理
+				met.parameters.each_with_index do |param_info, def_param_index|
+					_, param_name = param_info
+
+					# 実際に渡された引数の値を取得 (デフォルト値の処理も考慮する)
+					param_value = get_local_variable_from_binding(method_binding, param_name)
+					param_values[param_name] = param_value
+				end
+
+				# 戻り値チェック
+				if (matcher = declaration.return_matcher) then
+					# チェック処理
+					unless matcher.match?(return_value, method_self) then
+						# エラー
+						throw :neuron_check_error_tag, matcher.get_error_message(declaration, "return value of `#{declaration.signature_caption_name_only}'", return_value)
+					end
+				end
+
+				# 事後条件があれば実行
+				if declaration.postcond then
+					# コンテキストを生成
+					context = make_cond_block_context(method_self, 'postcond', param_values, declaration.postcond_allow_instance_method)
+
+					# 条件文実行
+					context.instance_exec(return_value, &(declaration.postcond))
+				end
+
+				# 最後まで正常実行した場合はnilを返す
+				nil
+			end # catch
+
+			# エラーメッセージがあればNeuronCheckError発生
+			if error_msg then
+				raise NeuronCheckError, error_msg, (NeuronCheck.debug? ? caller : caller(3))
 			end
-
-			# 事後条件があれば実行
-			if declaration.postcond then
-				# コンテキストを生成
-				context = make_cond_block_context(method_self, 'postcond', param_values, declaration.postcond_allow_instance_method)
-
-				# 条件文実行
-				context.instance_exec(return_value, &(declaration.postcond))
-			end
-
-			# 最後まで正常実行した場合はnilを返す
-			nil
-		end # catch
-
-		# エラーメッセージがあればNeuronCheckError発生
-		if error_msg then
-			raise NeuronCheckError, error_msg, caller(3)
+		rescue Exception
+			# 例外が発生した場合はその例外オブジェクトを返す
+			return $!
 		end
 	end
 
@@ -443,6 +465,12 @@ module NeuronCheck
 	@enabled = true
 	def self.enabled?; @enabled; end
 
+	# デバッグフラグ
+	@debug = false
+	def self.debug; @debug; end
+	def self.debug?; @debug; end
+	def self.debug=(v); @debug = v; end
+
 	# 無効化
 	def self.disable
 		if block_given? then
@@ -495,7 +523,7 @@ module NeuronCheck
 
 		matcher = NeuronCheckSystem.get_appropriate_matcher(expected, [])
 		unless matcher.match?(value, nil) then
-			raise NeuronCheckError, matcher.get_error_message(nil, 'value', value), caller(1)
+			raise NeuronCheckError, matcher.get_error_message(nil, 'value', value), (NeuronCheck.debug? ? caller : caller(1))
 		end
 	end
 
@@ -569,7 +597,7 @@ end
 # トップレベル関数用の特殊なndecl
 self.instance_eval do
 	def ndecl(*expecteds, &block)
-		decl_caller = caller(2)
+		decl_caller = caller(2, 1)
 
 		# Objectクラスへの宣言とみなす
 		Object.class_eval do

@@ -14,7 +14,7 @@ module NeuronCheckSystem
 			end
 
 			# メイン処理実行
-			__neuroncheck_ndecl_main(expecteds, block, caller(1))
+			__neuroncheck_ndecl_main(expecteds, block, caller(1, 1))
 		end
 
 		# ndeclのエイリアス
@@ -121,12 +121,12 @@ module NeuronCheckSystem
 		end
 
 		def args(*expecteds)
-			declared_caller_locations = caller(1)
+			declared_caller_locations = caller(1, 1)
 			@declaration.arg_matchers = expecteds.map{|x| NeuronCheckSystem.get_appropriate_matcher(x, declared_caller_locations)}
 		end
 
 		def returns(expected)
-			declared_caller_locations = caller(1)
+			declared_caller_locations = caller(1, 1)
 			@declaration.return_matcher = NeuronCheckSystem.get_appropriate_matcher(expected, declared_caller_locations)
 		end
 
@@ -141,7 +141,7 @@ module NeuronCheckSystem
 		end
 
 		def val(expected)
-			declared_caller_locations = caller(1)
+			declared_caller_locations = caller(1, 1)
 			@declaration.attr_matcher = NeuronCheckSystem.get_appropriate_matcher(expected, declared_caller_locations)
 		end
 		alias must_be val
