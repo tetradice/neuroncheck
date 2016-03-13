@@ -2,10 +2,10 @@ require 'neuroncheck'
 using NeuronCheckSyntax
 
 class Foo
-	ndecl String, Numeric, respondable(:each), ['yes', 'no'] => String
-	def foo_method(value, rate, targets, type)
-	  return "hello, neuroncheck."
-	end
+  ndecl String, Numeric, respondable(:each), ['yes', 'no'] => String
+  def foo_method(value, rate, targets, type)
+    return "hello, neuroncheck."
+  end
 end
 
 foo_instance = Foo.new

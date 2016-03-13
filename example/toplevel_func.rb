@@ -20,4 +20,4 @@ Bar.new.test_method
 #       signature: foo_func(value:String)
 #     declared at: script.rb:4:in `block in <main>'
 #   
-#   	from script.rb:16:in `<main>'
+#     from script.rb:16:in `<main>'
