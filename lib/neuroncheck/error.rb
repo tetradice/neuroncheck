@@ -1,12 +1,12 @@
 module NeuronCheckSystem
-	class ExceptionBase < Exception
-	end
+  class ExceptionBase < Exception
+  end
 
-	class DeclarationError < ExceptionBase
-	end
+  class DeclarationError < ExceptionBase
+  end
 
-	class PluginError < ExceptionBase
-	end
+  class PluginError < ExceptionBase
+  end
 end
 
 class NeuronCheckError < NeuronCheckSystem::ExceptionBase
