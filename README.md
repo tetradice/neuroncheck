@@ -16,7 +16,7 @@ class Converter
 
   # NeuronCheck check declaration block
   ndecl {
-    # Arguments declaration (this method receives 3 arguments - 1st is String, 2nd is any object has #each method, and 3rd is Numeric or nil.)
+    # Arguments declaration (this method receives 3 arguments - 1st is String, 2nd is any object has #each method, and 3rd is Numeric or nil)
     args String, respondable(:each), [Numeric, nil]
 
     # Return value declaration (this method returns self)
@@ -24,7 +24,7 @@ class Converter
 
     # Precondition check
     precond do
-      assert(threshold >= 0)
+      assert{threshold >= 0}
     end
   }
 
@@ -41,12 +41,8 @@ conv.convert(100, ['Blog', 'Learning'], 0.5)
 #            got: 100
 #      signature: Converter#convert(text:String, keywords:respondable(:each), threshold:[Numeric, nil]) -> self
 #    declared at: main.rb:10:in `block in <class:Converter>'
-#                 from D:/work/neuroncheck/lib/neuroncheck/kernel.rb:25:in `instance_eval'
-#                 from D:/work/neuroncheck/lib/neuroncheck/kernel.rb:25:in `ndecl'
-#                 from main.rb:8:in `<class:Converter>'
-#                 from main.rb:3:in `<main>'
 ~~~
 
 ## Documents and more information
 
-<http://ruby.morphball.net/neuroncheck/> (Japanese only)
+<http://ruby.morphball.net/neuroncheck/en/>
